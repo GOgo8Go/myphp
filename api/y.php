@@ -1,5 +1,5 @@
 <?php
-//https://www.yangshipin.cn/#/tv/home
+
 $id = isset($_GET['id'])?$_GET['id']:'cctv1';
 $n = [
     //央视
@@ -11,7 +11,7 @@ $n = [
     'cctv4' => 2022576603,//cccv4
     'cctv5' => 2022576403,//cccv5
     'cctv5p' => 2022576303,//cccv5+
-    'cctv6' => 2022574304,//cccv6(vip)
+    'cctv6' => 2022574303,//cccv6(vip)
     'cctv7' => 2022576203,//cccv7
     'cctv8' => 2022576103,//cccv8(vip)
     'cctv9' => 2022576003,//cccv9
@@ -71,14 +71,44 @@ $n = [
     'hinws' => 2000291503,//海南卫视
     ];
 $cnlid = $n[$id];
-$guid = "lsvnefgh_uhi48prk26e";//随意字符或字符串
+$guid = "lsdbop7p_".nu(11);
 $salt = '0f$IVHi9Qno?G';
 $platform = "5910204";
 $key = hex2bin("48e5918a74ae21c972b90cce8af6c8be");
 $iv = hex2bin("9a7e7d23610266b1d9fbf98581384d92");
 $ts = time();
 $el = "|{$cnlid}|{$ts}|mg3c3b04ba|V1.0.0|{$guid}|{$platform}|https://www.yangshipin.c|mozilla/5.0 (windows nt ||Mozilla|Netscape|Win32|";
-// 生成随机字符串并存储在变量中 
+$len = strlen($el);
+$xl = 0;
+for($i=0;$i<$len;$i++){
+    $xl = ($xl << 5) - $xl + ord($el[$i]);
+    $xl &= $xl & 0xFFFFFFFF;
+    }
+
+$xl = ($xl > 2147483648) ? $xl - 4294967296 : $xl; 
+
+$el = '|'.$xl.$el;
+$ckey = "--01".strtoupper(bin2hex(openssl_encrypt($el,"AES-128-CBC",$key,1,$iv)));
+function Kc($t) {//对参数数组排序并签名
+    $e = "";
+    $r = [];
+    $Rc = '0f$IVHi9Qno?G';
+    foreach ($t as $key => $value) {
+        $r[] = $key;
+    }
+    sort($r);
+    foreach ($r as $index => $key) {
+        if ($index != 0) {
+            $e .= "&";
+        }
+        if (is_array($t[$key])) {
+            $t[$key] = implode(",", $t[$key]);
+        }
+        $e .= $key . "=" . rawurlencode($t[$key]);
+    }
+    $e .= $Rc;
+    return md5($e);
+}    
 function nu($t = 10) {
     $e = "ABCDEFGHIJKlMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     $r = strlen($e);
@@ -93,59 +123,99 @@ $randomString = nu(10);
 $currentTimeMillis = round(microtime(true) * 1000);
 $request_id = "999999".$randomString.$currentTimeMillis;
 
-$len = strlen($el);
-$xl = 0;
-for($i=0;$i<$len;$i++){
-    $xl = ($xl << 5) - $xl + ord($el[$i]);
-    $xl &= $xl & 0xFFFFFFFF;
+function sign($param) {//对数据进行签名操作
+    $e = "";
+    $r = array_keys($param);
+    sort($r); // 排序属性名数组
+
+    foreach ($r as $n => $key) {
+        if ($n != 0) {
+            $e .= "&";
+        }
+        
+        if (is_array($param[$key])) {
+            $t[$key] = implode(',', $param[$key]); // 如果属性值是数组，则转换为字符串
+        }
+        
+        $e .= $key . "=" . rawurlencode($param[$key]); // 使用 rawurlencode 进行 URL 编码
     }
 
-$xl = ($xl > 2147483648) ? $xl - 4294967296 : $xl; 
+    $e .= "Q0uVOpuUpXTOUwRn"; // 在签名字符串末尾添加固定字符串
+    return md5($e); // 对签名字符串进行 MD5 哈希
+}
+$param = [
+    "pid"=>'600001859',
+    "guid"=>$guid,
+    "appid"=>"ysp_pc",
+    "rand_str"=>nu(10),
+];
+$singature=sign($param);
+$param["signature"] = $singature;
 
-$el = '|'.$xl.$el;
-$ckey = "--01".strtoupper(bin2hex(openssl_encrypt($el,"AES-128-CBC",$key,1,$iv)));
-
-$params = [
-        "adjust"=>1,
-        "appVer"=>"V1.0.0",
-        "app_version"=>"V1.0.0",
-        "cKey"=>$ckey,
-        "channel"=>"ysp_tx",
-        "cmd"=>"2",
-        "cnlid"=>"{$cnlid}",
-        "defn"=>"fhd",
-        "devid"=>"devid",
-        "dtype"=>"1",
-        "encryptVer"=>"8.1",
-        "guid"=>$guid,
-        "otype"=>"ojson",
-        "platform"=>$platform,
-        "rand_str"=>"{$ts}",
-        "sphttps"=>"1",
-        "stream"=>"2"
-        ];
-
-$sign = md5(http_build_query($params).$salt);
-$params["signature"] = $sign;
-
-$bstrURL = "https://player-api.yangshipin.cn/v1/player/get_live_info";
+//print_r($param); 查看请求数组
+$bstrURL = "https://player-api.yangshipin.cn/v1/player/auth";//请求网址
 $headers = [
-        "Content-Type: application/json",
-        "Referer: https://www.yangshipin.cn/",
-        "Cookie: guid={$guid};  versionName=99.99.99; versionCode=999999; vplatform=109; platformVersion=Chrome; deviceModel=94; updateProtocol=1; seqId=1; request-id={$request_id}",
-        "Yspappid: 519748109",
-        ];
+    "Content-Type: application/x-www-form-urlencoded;charset=UTF-8",
+    "Referer: https://www.yangshipin.cn/",
+    "Cookie: guid={$guid};  versionName=99.99.99; versionCode=999999; vplatform=109; platformVersion=Chrome; deviceModel=123; updateProtocol=1; seqId=36;request-id={$request_id}",
+    "Yspappid: 519748109",
+    ];
 $ch = curl_init($bstrURL);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); 
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); 
 curl_setopt($ch, CURLOPT_HTTPHEADER,$headers);
 curl_setopt($ch, CURLOPT_POST,1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($param));
+$data = curl_exec($ch);
+curl_close($ch);
+$json_data = json_decode($data);
+$token = $json_data->data->token;
+//auth获取结束
+
+//开始获取get_info信息
+$params = [
+    "cnlid" => "{$cnlid}",
+    //"livepid" => "{$livepid}",
+    "stream" => "2",
+    "guid" => $guid,
+    "cKey" => $ckey,
+    "adjust" => 1,
+    "sphttps" => "1",
+    "platform" => "5910204",
+    "cmd" => "2",
+    "encryptVer" => "8.1",
+    "dtype" => "1",
+    "devid" => "devid",
+    "otype" => "ojson",
+    "appVer" => "V1.0.0",
+    "app_version" => "V1.0.0",
+    "rand_str" => nu(10),
+    "channel" => "ysp_tx",
+    "defn" => "fhd",
+    
+];
+$sign1 = Kc($params);
+$params["signature"] = $sign1;
+
+$bstrURL1 = "https://player-api.yangshipin.cn/v1/player/get_live_info";
+$headers1 = [
+    "Content-Type: application/json;charset=UTF-8",
+    "Referer: https://www.yangshipin.cn/",
+    "Cookie: guid={$guid};  versionName=99.99.99; versionCode=999999; vplatform=109; platformVersion=Chrome; deviceModel=123; updateProtocol=1; seqId=36;request-id={$request_id}",
+    "Yspappid: 519748109",
+    "yspplayertoken: {$token}",
+];
+$ch = curl_init($bstrURL1);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0); 
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0); 
+curl_setopt($ch, CURLOPT_HTTPHEADER,$headers1);
+curl_setopt($ch, CURLOPT_POST,1);
 curl_setopt($ch, CURLOPT_POSTFIELDS,json_encode($params));
 $data = curl_exec($ch);
 // 关闭CURL会话
 curl_close($ch);
-
 $json = json_decode($data);
 $live = $json->data->playurl;
 $extended_param = $json->data->extended_param;
@@ -176,15 +246,14 @@ function encryptData($data,$desKey,$desIv) {
     return strtoupper(bin2hex($encrypted));
 }
 //定义变量保存revoi值
-$encryptedHex = encryptData($data,$desKey,$desIv);
+$encryptedHex = encryptData($data,$desKey,$desIv);//revoi值
 $burl = explode("{$n[$id]}.m3u8",$live)[0];
 $d = file_get_contents($live);
 $pattern = '/\.m3u8(.*)/';
 preg_match($pattern, $live, $matches);
-$str = preg_replace("/(.*?.ts)/", $burl."$1$matches[1]&revoi=$encryptedHex$extended_param",$d);
+$str = preg_replace("/(.*?.ts)/", $burl."$1$matches[1]",$d);
 $filteredContent = preg_replace('/outlivecloud-cdn.ysp.cctv.cn/', 'hlslive-tx-cdn.ysp.cctv.cn',$str);
 header("Content-Type: application/vnd.apple.mpegurl");
 header("Content-Disposition: inline; filename=index.m3u8");
 echo $filteredContent;
-
 ?>
